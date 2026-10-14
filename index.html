@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Turtles All The Way Down</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:ui-monospace,Menlo,monospace;color:#fff}
+  canvas{display:block}
+  #hud{position:fixed;inset:0;pointer-events:none}
+  #hud .interactive{pointer-events:auto}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="hud"></div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

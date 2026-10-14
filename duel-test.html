@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Duel Test</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:ui-monospace,Menlo,monospace;color:#fff}
+  canvas{display:block}
+  #hud{position:fixed;inset:0;pointer-events:none}
+  #hud .interactive{pointer-events:auto}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="hud"></div>
+<script type="module">
+// Standalone harness for src/duel.js. Add ?auto to let a bot play (skips pointer lock).
+import * as THREE from 'three';
+import { DuelWorld } from './src/duel.js';
+
+const params = new URLSearchParams(location.search);
+const sim = params.has('sim');               // headless: fixed-step timer loop + DOM log
+const auto = params.has('auto') || sim;
+const logEl = sim ? document.body.appendChild(Object.assign(document.createElement('pre'), { id: 'log' })) : null;
+const log = (...a) => { console.log('[duel-test]', ...a); if (logEl) logEl.textContent += a.join(' ') + '\n'; };
+const game = {
+  audio: { play(name) { log('audio', name); } },
+  hud: { log, flash: log },
+  shake() {},
+  isTyping: () => false,
+};
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: sim });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+document.body.prepend(renderer.domElement);
+if (sim) log('gl', renderer.getContext().getParameter(renderer.getContext().VERSION));
+addEventListener('resize', () => renderer.setSize(innerWidth, innerHeight));
+
+let duel, endedAt = 0;
+function start() {
+  duel = new DuelWorld(game, { host: { type: 'R', team: 0, strength: 1 }, seed: (Math.random() * 1e9) | 0 });
+  game.active = window.duel = duel;
+  duel.activate();
+  if (auto) { duel.started = true; duel.lockFailed = true; }
+}
+start();
+
+const COUNTER_KEY = { R: 'Digit2', P: 'Digit3', S: 'Digit1' };
+const ANY_KEY = ['Digit1', 'Digit2', 'Digit3'];
+let last = performance.now(), simNow = 0;
+function frame(now) {
+  if (sim) now = simNow += 1000 / 60;
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (auto) duel.yaw = Math.atan2(-(duel.opp.position.x - duel.player.x), -(duel.opp.position.z - duel.player.z)); // bot aims
+  duel.update(dt);
+  if (auto && duel.phase === 'tell' && !duel.playerThrow && duel.timer < 0.45) {
+    const code = Math.random() < 0.7 ? COUNTER_KEY[duel.oppThrow] : ANY_KEY[(Math.random() * 3) | 0];
+    dispatchEvent(new KeyboardEvent('keydown', { code }));
+  }
+  if (duel.state !== 'playing') {
+    if (!endedAt) { endedAt = now; log('match over:', duel.state, 'winChance', duel.winChance()); }
+    else if (now - endedAt > 1500) { endedAt = 0; duel.dispose(); start(); }
+  }
+  renderer.render(duel.scene, duel.camera);
+  if (sim) { // headless screenshots don't composite WebGL: mirror the canvas into an <img>
+    const img = document.getElementById('mirror') || document.body.insertBefore(Object.assign(document.createElement('img'), { id: 'mirror', style: 'position:fixed;inset:0;width:100%;height:100%' }), document.getElementById('hud'));
+    img.src = renderer.domElement.toDataURL();
+  }
+  if (sim) setTimeout(frame, 16); else requestAnimationFrame(frame);
+}
+if (sim) { last = 0; setTimeout(frame, 16); } else requestAnimationFrame(frame);
+addEventListener('error', (e) => log('ERROR', e.message));
+</script>
+</body>
+</html>
