@@ -2,6 +2,8 @@
 
 Fractal RPS voxel RTS. three.js via CDN, no build step.
 
+**▶ Play: https://turtles-all-the-way-down.vercel.app** (best in Chrome — click in the duel to lock the mouse)
+
 ```
 cd turtles && python3 -m http.server 8130
 ```
